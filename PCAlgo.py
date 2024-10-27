@@ -1,6 +1,6 @@
 #Madeline Spawn
 #PC Algorithm
-#https://arxiv.org/pdf/1502.02454
+#Causation, Prediction, and Search by Spirtes, Glymour, Scheines (pg. 116)
 
 import networkx as nx
 import logging
@@ -14,14 +14,13 @@ class PC:
 
         self.completegraph = None
         self.skeletongraph = None
-        self.sepset = {}
+        self.sepset = dict()
 
         self.dag = None
 
         logging.getLogger().setLevel(logging.INFO)
 
-
-    def complete(self):
+    def getcomplete(self):
         ''' 
         Input: None
         Output: complete graph, G
@@ -39,24 +38,32 @@ class PC:
         self.completegraph = G
         return 0;
 
-    def skeleton(self):
+    def getskeleton(self):
         ''' 
         Input: None
         Output: skeleton graph in self.skeleton
         Purpose: Output graph with edges that are not significant
         '''
-        depth = 0
+
         self.skeletongraph = self.completegraph.copy()
+        depth = 0
+        Z = None
 
-        for edge in self.skeletongraph.edges:
-            print(edge)
-            for i in range(1):
-                print(depth)
-                #check adjacenies and ind test
-            #check cardinality
-
+        # until for each ordered pair of adjacent vertices X, Y, Adjacencies(C,X)\{Y} is
+        # of cardinality less than n.
+        while depth <1:    #adj(X, G)\{Y }| > d for every pair of adjacent vertices in G;
+            for edge in self.skeletongraph.edges:
+                X, Y = edge
+                #if (|adj(X, G)\{Y }| >= d) then
+                    #for each subset Z ⊆ adj(X, G)\{Y } and
+                if  self.testindependence(X, Y, Z) > self.alpha:
+                    self.skeletongraph.remove_edge(X, Y)
+                    if Z:
+                        self.sepset[(X,Y)] = Z
+                        self.sepset[(Y,X)] = Z
             depth +=1
 
+        print(self.skeletongraph.edges)
         logging.info('Skeleton graph created with %d nodes and %d edges', len(self.skeletongraph.nodes), len(self.skeletongraph.edges))
         return 0;
 
@@ -76,7 +83,6 @@ class PC:
         '''
         return 0;
 
-
     def runPC(self):
         ''' 
         Input: None 
@@ -84,13 +90,29 @@ class PC:
         Purpose: run the steps of the PC algorithm
         '''
 
-        self.complete()
-        self.skeleton()
+        self.getcomplete()
+        self.getskeleton()
         self.orienttriples()
         self.finalorientation()
 
         return self.dag
     
+    #----------------Helper Functions----------------#   
+
+    def testindependence(self, X, Y, Z):
+        ''' 
+        Input: X, Y, Z
+        Output: p-value
+        Purpose: handle different tests + return p-value
+        '''
+
+        if str(self.indtest.__name__) == 'pearsonr' or 'spearmanr':
+            if Z:
+                return self.indtest(self.data[X], self.data[Y], self.data[Z])[1]     
+            return self.indtest(self.data[X], self.data[Y])[1]
+    
 
 
-     
+        logging.error('Independence test not recognized')
+
+        return 0
