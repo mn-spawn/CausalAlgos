@@ -23,16 +23,12 @@ def generatedataframe(samplenum, relationships, csv, cardinality=2):
             value = nodedata[node]
 
             for dep in dependencies:
-                    adjustedvalue = value + random.randint(-2, 2)
+                    adjustedvalue = value + random.randint(-5, 5)
                     nodedata[dep] = max(0, min(cardinality-1, adjustedvalue))
     
         data.append(nodedata)
     
     df = pd.DataFrame(data)
     df.to_csv(csv, index=False)
-    
 
-
-
-def generatedependentdata(node, dependencies):
-    i = 0
+    return 0

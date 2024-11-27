@@ -4,13 +4,16 @@
 
 import networkx as nx
 import logging
+import itertools
+import pingouin as pg
 
 class PC:
-    def __init__(self, data, alpha, indtest=callable):
+    def __init__(self, data, alpha, indtest=callable, condindtest=callable, debug=False):
         self.data = data;
         self.V = data.columns
         self.alpha = alpha
         self.indtest = indtest
+        self.condindtest = condindtest
 
         self.completegraph = None
         self.skeletongraph = None
@@ -18,7 +21,10 @@ class PC:
 
         self.dag = None
 
-        logging.getLogger().setLevel(logging.INFO)
+        if debug:
+            logging.getLogger().setLevel(logging.DEBUG)
+        else:
+            logging.getLogger().setLevel(logging.INFO)
 
     def getcomplete(self):
         ''' 
@@ -26,15 +32,16 @@ class PC:
         Output: complete graph, G
         Purpose: obtain and store complete graph
         '''
-        G = nx.Graph()
+        G = nx.DiGraph()
 
         for i, node in enumerate(self.V):
             G.add_node(node)
             for j in range(i + 1, len(self.V)):
                 G.add_edge(node, self.V[j])
+                G.add_edge(self.V[j], node)
 
         logging.info('Complete graph created with %d nodes and %d edges', len(G.nodes), len(G.edges))
-                   
+                     
         self.completegraph = G
         return 0;
 
@@ -46,21 +53,32 @@ class PC:
         '''
 
         self.skeletongraph = self.completegraph.copy()
+        edges = list(self.skeletongraph.edges)
         depth = 0
         Z = None
+        numnodes = len(self.skeletongraph.nodes)
 
-        # until for each ordered pair of adjacent vertices X, Y, Adjacencies(C,X)\{Y} is
-        # of cardinality less than n.
-        while depth <1:    #adj(X, G)\{Y }| > d for every pair of adjacent vertices in G;
-            for edge in self.skeletongraph.edges:
+        while self.adjgreaterthandepth(self.skeletongraph, depth) and depth < numnodes-1: 
+            edges = list(self.skeletongraph.edges)
+            for edge in edges:
                 X, Y = edge
-                #if (|adj(X, G)\{Y }| >= d) then
-                    #for each subset Z ⊆ adj(X, G)\{Y } and
-                if  self.testindependence(X, Y, Z) > self.alpha:
-                    self.skeletongraph.remove_edge(X, Y)
-                    if Z:
-                        self.sepset[(X,Y)] = Z
-                        self.sepset[(Y,X)] = Z
+                neighbors = list(self.skeletongraph.neighbors(Y))
+
+                if len(neighbors) > depth:
+                    neighborsexcludeX = [node for node in neighbors if node != X]
+
+                    for Z in itertools.combinations(neighborsexcludeX, depth):
+                        Z = set(Z)
+                        if  self.testindependence(X, Y, Z) > self.alpha:
+                            if self.skeletongraph.has_edge(X, Y):
+                                logging.debug(f"removing {X} - {Y}")
+                                self.skeletongraph.remove_edge(X, Y)
+                                self.skeletongraph.remove_edge(Y, X)
+
+                            if Z:
+                                logging.debug(f"adding {Z} to sep set for {X},{Y}")
+                                self.sepset[(X,Y)] = Z
+                                self.sepset[(Y,X)] = Z
             depth +=1
 
         print(self.skeletongraph.edges)
@@ -73,6 +91,17 @@ class PC:
         Output: None
         Purpose: 
         '''
+
+        self.dag = self.skeletongraph.copy()
+        edges = list(self.dag.edges)
+
+        #find unshielded triples
+
+
+        #orient triples
+
+
+
         return 0;
 
     def finalorientation(self):
@@ -82,6 +111,8 @@ class PC:
         Purpose: 
         '''
         return 0;
+
+        #meeks rules
 
     def runPC(self):
         ''' 
@@ -105,14 +136,24 @@ class PC:
         Output: p-value
         Purpose: handle different tests + return p-value
         '''
-
-        if str(self.indtest.__name__) == 'pearsonr' or 'spearmanr':
-            if Z:
-                return self.indtest(self.data[X], self.data[Y], self.data[Z])[1]     
+        
+        if Z:
+            result = pg.partial_corr(self.data, X, Y, covar=Z)
+            #result = self.condindtest(self.data, X, Y, Z)
+            return result['p-val'].values[0]
+        else:
             return self.indtest(self.data[X], self.data[Y])[1]
-    
 
+    def adjgreaterthandepth(self, graph, d):
+        '''
+        Input: graph, depth 
+        Output: True/False
+        Purpose: check if adajcent nodes have depth greater than d
+        '''
 
-        logging.error('Independence test not recognized')
-
-        return 0
+        for edge in graph.edges:
+            X, Y = edge
+            if len(list(graph.neighbors(Y))) > d:
+                return True
+            
+        return False
