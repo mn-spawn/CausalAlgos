@@ -20,6 +20,7 @@ class PC:
         self.skeletongraph = None
         self.dag = None
         self.sepset = dict()
+        self.unorientededges = []
 
         self.dag = None
 
@@ -44,6 +45,7 @@ class PC:
         logging.info('Complete graph created with %d nodes and %d edges', len(G.nodes), len(G.edges))
                      
         self.completegraph = G
+
         return 0;
 
     def getskeleton(self):
@@ -99,7 +101,7 @@ class PC:
         for triple in unshieldedtriples:
             X, Z, Y = triple
 
-            if (X,Z) in self.skeletongraph.edges and (Z,Y) in self.skeletongraph.edges:
+            if (X,Z) in self.skeletongraph.edges and (Z,Y) in self.skeletongraph.edges and (X,Y) not in self.skeletongraph.edges:
                 if self.testindependence(X, Z, Y) < self.alpha:          
                     self.dag.add_edge(X, Z)
                     self.dag.add_edge(Z, Y)
@@ -111,8 +113,9 @@ class PC:
             X, Y = edge
             if (X, Y) not in self.dag.edges and (Y, X) not in self.dag.edges:
                 self.dag.add_edge(X, Y)  
+                self.dag.add_edge(Y, X)
+                self.unorientededges.append((X,Y))       
 
-        self.visualizegraph(self.dag, directed=True)
         return 0
 
     def finalorientation(self):
@@ -123,6 +126,8 @@ class PC:
         '''
 
         #meeks rules
+        logging.info('Number of unoriented edges: %d', len(self.unorientededges))
+        self.visualizegraph(self.dag, directed=True)
 
         return 0
        
