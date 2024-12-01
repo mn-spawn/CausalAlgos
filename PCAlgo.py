@@ -6,6 +6,7 @@ import networkx as nx
 import logging
 import itertools
 import pingouin as pg
+import matplotlib.pyplot as plt
 
 class PC:
     def __init__(self, data, alpha, indtest=callable, condindtest=callable, debug=False):
@@ -17,7 +18,9 @@ class PC:
 
         self.completegraph = None
         self.skeletongraph = None
+        self.dag = None
         self.sepset = dict()
+        self.unorientededges = []
 
         self.dag = None
 
@@ -32,17 +35,17 @@ class PC:
         Output: complete graph, G
         Purpose: obtain and store complete graph
         '''
-        G = nx.DiGraph()
+        G = nx.Graph()
 
         for i, node in enumerate(self.V):
             G.add_node(node)
             for j in range(i + 1, len(self.V)):
                 G.add_edge(node, self.V[j])
-                G.add_edge(self.V[j], node)
 
         logging.info('Complete graph created with %d nodes and %d edges', len(G.nodes), len(G.edges))
                      
         self.completegraph = G
+
         return 0;
 
     def getskeleton(self):
@@ -73,7 +76,6 @@ class PC:
                             if self.skeletongraph.has_edge(X, Y):
                                 logging.debug(f"removing {X} - {Y}")
                                 self.skeletongraph.remove_edge(X, Y)
-                                self.skeletongraph.remove_edge(Y, X)
 
                             if Z:
                                 logging.debug(f"adding {Z} to sep set for {X},{Y}")
@@ -81,7 +83,6 @@ class PC:
                                 self.sepset[(Y,X)] = Z
             depth +=1
 
-        print(self.skeletongraph.edges)
         logging.info('Skeleton graph created with %d nodes and %d edges', len(self.skeletongraph.nodes), len(self.skeletongraph.edges))
         return 0;
 
@@ -92,17 +93,30 @@ class PC:
         Purpose: 
         '''
 
-        self.dag = self.skeletongraph.copy()
-        edges = list(self.dag.edges)
+        self.dag = nx.DiGraph()
 
         #find unshielded triples
+        unshieldedtriples = self.unshieldedtriples()
 
+        for triple in unshieldedtriples:
+            X, Z, Y = triple
 
-        #orient triples
+            if (X,Z) in self.skeletongraph.edges and (Z,Y) in self.skeletongraph.edges and (X,Y) not in self.skeletongraph.edges:
+                if self.testindependence(X, Z, Y) < self.alpha:          
+                    self.dag.add_edge(X, Z)
+                    self.dag.add_edge(Z, Y)
+                else:
+                    self.dag.add_edge(Z, X)
+                    self.dag.add_edge(Z, Y)
 
+        for edge in self.skeletongraph.edges:
+            X, Y = edge
+            if (X, Y) not in self.dag.edges and (Y, X) not in self.dag.edges:
+                self.dag.add_edge(X, Y)  
+                self.dag.add_edge(Y, X)
+                self.unorientededges.append((X,Y))       
 
-
-        return 0;
+        return 0
 
     def finalorientation(self):
         ''' 
@@ -110,10 +124,13 @@ class PC:
         Output: None
         Purpose: 
         '''
-        return 0;
 
         #meeks rules
+        logging.info('Number of unoriented edges: %d', len(self.unorientededges))
+        self.visualizegraph(self.dag, directed=True)
 
+        return 0
+       
     def runPC(self):
         ''' 
         Input: None 
@@ -157,3 +174,56 @@ class PC:
                 return True
             
         return False
+    
+    def unshieldedtriples(self):
+        ''' 
+        Input: graph
+        Output: set of unshielded triples
+        Purpose: find and return unshielded triples in graph
+        '''
+
+        edges = self.skeletongraph.edges
+        nodes = self.skeletongraph.nodes
+
+        triples = list(itertools.combinations(nodes, 3))
+        unshieldedtriples = set()
+        
+        for triple in triples:
+            X, Y, Z = triple
+            if (X,Y) in edges and (Y,Z) in edges and (X,Z) not in edges:
+                unshieldedtriples.add(triple)
+
+        return unshieldedtriples
+    
+    def visualizegraph(self, graph=None, directed=False):
+        ''' 
+        Input: graph
+        Output: None
+        Purpose: visualize graph
+        '''
+        logging.getLogger('matplotlib').setLevel(logging.ERROR)
+
+        if graph is None:
+            graph = nx.Graph(self.skeletongraph)
+
+            nx.draw(graph, pos, with_labels=True, node_size=2000, node_color="lightblue", font_size=16, 
+                font_weight="bold", edge_color='gray')
+
+        else:
+            pos = nx.spring_layout(graph, k=0.5, iterations=50) 
+            plt.figure(figsize=(8, 8)) 
+
+            if directed:
+                graph = nx.DiGraph(graph)
+                
+                nx.draw(graph, pos, with_labels=True, node_size=2000, node_color="lightblue", font_size=16, 
+                    font_weight="bold", edge_color='gray', arrowsize=20)
+            else:    
+                graph = nx.Graph(graph)
+                nx.draw(graph, pos, with_labels=True, node_size=2000, node_color="lightblue", font_size=16, 
+                    font_weight="bold", edge_color='gray')
+
+
+        plt.title(str(graph))    
+        plt.show()
+  
