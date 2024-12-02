@@ -20,7 +20,6 @@ class PC:
         self.skeletongraph = None
         self.dag = None
         self.sepset = dict()
-        self.unorientededges = []
 
         self.dag = None
 
@@ -72,7 +71,7 @@ class PC:
 
                     for Z in itertools.combinations(neighborsexcludeX, depth):
                         Z = set(Z)
-                        if  self.testindependence(X, Y, Z) > self.alpha:
+                        if self.testindependence(X, Y, Z) > self.alpha:
                             if self.skeletongraph.has_edge(X, Y):
                                 logging.debug(f"removing {X} - {Y}")
                                 self.skeletongraph.remove_edge(X, Y)
@@ -81,6 +80,9 @@ class PC:
                                 logging.debug(f"adding {Z} to sep set for {X},{Y}")
                                 self.sepset[(X,Y)] = Z
                                 self.sepset[(Y,X)] = Z
+                            else:
+                                self.sepset[(X,Y)] = None
+                                self.sepset[(Y,X)] = None
             depth +=1
 
         logging.info('Skeleton graph created with %d nodes and %d edges', len(self.skeletongraph.nodes), len(self.skeletongraph.edges))
@@ -99,37 +101,56 @@ class PC:
         unshieldedtriples = self.unshieldedtriples()
 
         for triple in unshieldedtriples:
-            X, Z, Y = triple
-
-            if (X,Z) in self.skeletongraph.edges and (Z,Y) in self.skeletongraph.edges and (X,Y) not in self.skeletongraph.edges:
-                if self.testindependence(X, Z, Y) < self.alpha:          
-                    self.dag.add_edge(X, Z)
-                    self.dag.add_edge(Z, Y)
-                else:
-                    self.dag.add_edge(Z, X)
-                    self.dag.add_edge(Z, Y)
-
-        for edge in self.skeletongraph.edges:
-            X, Y = edge
-            if (X, Y) not in self.dag.edges and (Y, X) not in self.dag.edges:
-                self.dag.add_edge(X, Y)  
-                self.dag.add_edge(Y, X)
-                self.unorientededges.append((X,Y))       
-
+            X, Y, Z = triple
+            if self.sepset[(X,Z)] != None and Y not in self.sepset[(X,Z)]:
+                #collider
+                self.dag.add_edge(X, Y)
+                self.dag.add_edge(Z, Y)
+        
+        logging.info('DAG created with %d nodes and %d edges', len(self.dag.nodes), len(self.dag.edges))     
         return 0
 
-    def finalorientation(self):
+    def finalorientation(self, rule4="False"):
         ''' 
         Input: None
         Output: None
         Purpose: 
         '''
+        
+        undirectededges = [
+            edges for edges in self.skeletongraph.edges
+            if (edges[0], edges[1]) not in self.dag.edges and (edges[1], edges[0]) not in self.dag.edges
+        ]
+        print(undirectededges)
 
         #meeks rules
-        logging.info('Number of unoriented edges: %d', len(self.unorientededges))
-        self.visualizegraph(self.dag, directed=True)
 
-        return 0
+        changes = True
+        while changes:
+            print("again")
+            changes = False 
+            
+            for edge in undirectededges:
+                X, Y = edge
+
+                #Rule 1
+                
+
+                #Rule 2
+
+                #Rule 3
+
+                if rule4:
+                    #Rule4
+                    continue
+
+
+
+        logging.info('Orientation complete.')
+
+        logging.info('DAG created with %d nodes and %d edges', len(self.dag.nodes), len(self.dag.edges))
+        self.visualizegraph(self.dag, directed=True)
+        return self.dag
        
     def runPC(self):
         ''' 
@@ -182,16 +203,20 @@ class PC:
         Purpose: find and return unshielded triples in graph
         '''
 
-        edges = self.skeletongraph.edges
-        nodes = self.skeletongraph.nodes
-
-        triples = list(itertools.combinations(nodes, 3))
         unshieldedtriples = set()
-        
-        for triple in triples:
-            X, Y, Z = triple
-            if (X,Y) in edges and (Y,Z) in edges and (X,Z) not in edges:
-                unshieldedtriples.add(triple)
+
+        for X in self.skeletongraph.nodes():
+            for Z in self.skeletongraph.nodes():
+                if X != Z and not self.skeletongraph.has_edge(X, Z):  
+                    Xneighbors = set(self.skeletongraph.neighbors(X))
+                    Zneighbors = set(self.skeletongraph.neighbors(Z))
+
+                    sharedneighbors = Xneighbors.intersection(Zneighbors)
+
+                    # For each common neighbor, add the unshielded triple
+                    for Y in sharedneighbors:
+                        if Y != X and Y != Z: 
+                            unshieldedtriples.add((X, Y, Z))
 
         return unshieldedtriples
     
@@ -227,3 +252,10 @@ class PC:
         plt.title(str(graph))    
         plt.show()
   
+    
+        ''' 
+        Input: None
+        Output: None
+        Purpose: 
+        '''
+        return 0

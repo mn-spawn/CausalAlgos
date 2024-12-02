@@ -25,7 +25,7 @@ def main():
     #data2 = pd.read_csv('testdata/binarytest.csv', delimiter=',')
     #data3 = pd.read_csv('testdata/cardinality3test.csv', delimiter=',')
     #data4 = pd.read_csv('testdata/cardinality4test.csv', delimiter=',')
-    #data100 = pd.read_csv('testdata/cardinality100test.csv', delimiter=',')
+    data100 = pd.read_csv('testdata/cardinality100test.csv', delimiter=',')
     retention = pd.read_csv('testdata/Retention.csv', delimiter=',')
 
     
@@ -36,7 +36,7 @@ def main():
     #pc = PC(data3, alpha, indtest=spearmanr, debug=True)
     #pc = PC(data4, alpha, indtest=spearmanr, debug=True)
     #pc = PC(data100, alpha, indtest=spearmanr, condindtest=pg.partial_corr, debug=True)
-    pc = PC(retention, alpha, indtest=spearmanr, debug=False)
+    pc = PC(retention, alpha, indtest=spearmanr, debug=True)
 
 
     pc.runPC()
