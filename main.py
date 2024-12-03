@@ -36,10 +36,11 @@ def main():
     #pc = PC(data3, alpha, indtest=spearmanr, debug=True)
     #pc = PC(data4, alpha, indtest=spearmanr, debug=True)
     #pc = PC(data100, alpha, indtest=spearmanr, condindtest=pg.partial_corr, debug=True)
-    pc = PC(retention, alpha, indtest=spearmanr, debug=True)
+    pc = PC(retention, alpha, indtest=spearmanr, debug=False)
 
 
-    pc.runPC()
+    dag = pc.runPC()
+    pc.visualizegraph(dag, directed=True)
     
 
 if __name__ == "__main__":

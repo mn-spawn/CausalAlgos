@@ -42,10 +42,9 @@ class PC:
             for j in range(i + 1, len(self.V)):
                 G.add_edge(node, self.V[j])
 
-        logging.info('Complete graph created with %d nodes and %d edges', len(G.nodes), len(G.edges))
-                     
+        logging.info(f'Complete graph created with {len(G.nodes)} nodes and {len(G.edges)} edges')
+              
         self.completegraph = G
-
         return 0;
 
     def getskeleton(self):
@@ -86,7 +85,7 @@ class PC:
                                 self.sepset[(Y,X)] = None
             depth +=1
 
-        logging.info('Skeleton graph created with %d nodes and %d edges', len(self.skeletongraph.nodes), len(self.skeletongraph.edges))
+        logging.info(f'Skeleton graph created with {len(self.skeletongraph.nodes)} nodes and {len(self.skeletongraph.edges)} edges')
         return 0;
 
     def orienttriples(self):
@@ -107,7 +106,7 @@ class PC:
                 self.dag.add_edge(X, Y)
                 self.dag.add_edge(Z, Y)
         
-        logging.info('DAG created with %d nodes and %d edges', len(self.dag.nodes), len(self.dag.edges))     
+        logging.info(f"Triple orientation: DAG created with {len(self.dag.nodes)} nodes and {len(self.dag.edges)} edges")
         return 0
 
     def finalorientation(self, rule4="False"):
@@ -140,17 +139,15 @@ class PC:
             if rule4:
                 self.rule4(undirectededges)
 
-
+        undirectededgescount = 0
         for (X,Y) in self.skeletongraph.edges:
             if (X,Y) not in self.dag.edges and (Y,X) not in self.dag.edges:
-                print(X,Y)
                 self.dag.add_edge(X, Y)
                 self.dag.add_edge(Y, X)
-            
-        logging.info('Orientation complete.')
+                undirectededgescount += 1
+                        
 
-        logging.info('DAG created with %d nodes and %d edges', len(self.dag.nodes), len(self.dag.edges))
-        self.visualizegraph(self.dag, directed=True)
+        logging.info(f"Meeks Rules: DAG created with {len(self.dag.nodes)} nodes and {len(self.dag.edges)} edges (undirectable edges: {undirectededgescount} ... {len(self.dag.edges)-undirectededgescount} total edges)")
         return self.dag
        
     def runPC(self):
@@ -263,7 +260,6 @@ class PC:
         self.continueorienttation = False
 
         for (X,Y) in undirectededges:
-            print(X,Y)
             if X not in self.dag.nodes:
                 logging.debug(f"X not in DAG: {X}")
                 continue
