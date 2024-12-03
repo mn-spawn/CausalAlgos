@@ -15,10 +15,10 @@ from datagenerator import generatedataframe
 def main():
     #create data
     #here B is dependent on A, with all other nodes independent
-    generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/binarytest.csv', 2)
-    generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality3test.csv', 3)
-    generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality4test.csv', 4)
-    generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality100test.csv', 100)
+    #generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/binarytest.csv', 2)
+    #generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality3test.csv', 3)
+    #generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality4test.csv', 4)
+    #generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality100test.csv', 100)
     
 
     #load data
@@ -36,7 +36,7 @@ def main():
     #pc = PC(data3, alpha, indtest=spearmanr, debug=True)
     #pc = PC(data4, alpha, indtest=spearmanr, debug=True)
     #pc = PC(data100, alpha, indtest=spearmanr, condindtest=pg.partial_corr, debug=True)
-    pc = PC(retention, alpha, indtest=spearmanr, debug=False)
+    pc = PC(retention, alpha, indtest=spearmanr, debug=True)
 
 
     pc.runPC()
