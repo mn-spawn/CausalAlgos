@@ -15,17 +15,17 @@ from datagenerator import generatedataframe
 def main():
     #create data
     #here B is dependent on A, with all other nodes independent
-    generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/binarytest.csv', 2)
-    generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality3test.csv', 3)
-    generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality4test.csv', 4)
-    generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality100test.csv', 100)
+    #generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/binarytest.csv', 2)
+    #generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality3test.csv', 3)
+    #generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality4test.csv', 4)
+    #generatedataframe(100, {'A': ['B'], 'B': ['C'], 'C': [], 'D': ['E'], 'E': []}, 'testdata/cardinality100test.csv', 100)
     
 
     #load data
     #data2 = pd.read_csv('testdata/binarytest.csv', delimiter=',')
     #data3 = pd.read_csv('testdata/cardinality3test.csv', delimiter=',')
     #data4 = pd.read_csv('testdata/cardinality4test.csv', delimiter=',')
-    data100 = pd.read_csv('testdata/cardinality100test.csv', delimiter=',')
+    #data100 = pd.read_csv('testdata/cardinality100test.csv', delimiter=',')
     retention = pd.read_csv('testdata/Retention.csv', delimiter=',')
 
     

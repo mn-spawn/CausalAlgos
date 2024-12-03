@@ -19,8 +19,8 @@ class PC:
 
         self.completegraph = None
         self.skeletongraph = None
-        self.dag = None
         self.sepset = dict()
+        self.continueorienttation = True
 
         self.dag = None
 
@@ -126,17 +126,19 @@ class PC:
         for edge in edges:
             undirectededges.append((edge[1], edge[0]))
 
-        #Rule 1
-        self.rule1(undirectededges)
-                
-        #Rule 2
-        self.rule2(undirectededges)
+        while self.continueorienttation:
 
-        #Rule 3
-        self.rule3(undirectededges)
+            #Rule 1
+            self.rule1(undirectededges)
+                    
+            #Rule 2
+            self.rule2(undirectededges)
 
-        if rule4:
-            self.rule4(undirectededges)
+            #Rule 3
+            self.rule3(undirectededges)
+
+            if rule4:
+                self.rule4(undirectededges)
 
 
         for (X,Y) in self.skeletongraph.edges:
@@ -144,7 +146,7 @@ class PC:
                 print(X,Y)
                 self.dag.add_edge(X, Y)
                 self.dag.add_edge(Y, X)
-
+            
         logging.info('Orientation complete.')
 
         logging.info('DAG created with %d nodes and %d edges', len(self.dag.nodes), len(self.dag.edges))
@@ -257,6 +259,9 @@ class PC:
         Output: None
         Purpose: Orient X - Y into  X -> Y when directed W -> X 
         '''
+
+        self.continueorienttation = False
+
         for (X,Y) in undirectededges:
             print(X,Y)
             if X not in self.dag.nodes:
@@ -267,7 +272,8 @@ class PC:
                 for W in parentsX:
                     if self.dag.has_edge(W, X):
                         self.dag.add_edge(X, Y)
-                        logging.debug(f"orienting {X} -> {Y} because {W} -> {X}")
+                        logging.debug(f"orienting {X} -> {Y} because {W} -> {X}, logging rule 1")
+                        self.continueorienttation = True
                         break
 
         return 0
@@ -278,6 +284,7 @@ class PC:
         Output: None
         Purpose: X - Y is X -> Y when X -> Z and Z -> Y
         '''
+        self.continueorienttation = False
         
         for (X,Y) in undirectededges:
             if X not in self.dag.nodes:
@@ -288,7 +295,8 @@ class PC:
                 for Z in childrenY:
                     if self.dag.has_edge(X, Z) and self.dag.has_edge(Z, Y):
                         self.dag.add_edge(X, Y)
-                        logging.debug(f"orienting {X} -> {Y} because {X} -> {Z} and {Z} -> {Y}")
+                        logging.debug(f"orienting {X} -> {Y} because {X} -> {Z} and {Z} -> {Y} logging rule 2")
+                        self.continueorienttation = True
                         break
     
     def rule3(self, undirectededges):
@@ -297,6 +305,7 @@ class PC:
         Output: None
         Purpose: Orient X - Y into  X -> Y where W -> Y and Z -> Y
         '''
+        self.continueorienttation = False
 
         for (X,Y) in undirectededges:
             if X not in self.dag.nodes:
@@ -308,7 +317,8 @@ class PC:
                 for (W, Z) in parentcombos:
                     if self.dag.has_edge(W, X) and self.dag.has_edge(Z, X):
                         self.dag.add_edge(X, Y)
-                        logging.debug(f"orienting {X} -> {Y}")
+                        logging.debug(f"orienting {X} -> {Y} logging rule 3")
+                        self.continueorienttation = True
                         break
           
         return 0
@@ -317,5 +327,20 @@ class PC:
         '''
         Input: None
         Output: None
-        Purpose: Orient X - Y into X -> Y where 
+        Purpose: Orient X - Y into X -> Y where A -> B -> Y 
         '''
+
+        for (X,Y) in undirectededges:
+            if Y not in self.dag.nodes:
+                logging.debug(f"Y not in DAG: {Y}")
+                continue
+            else:
+                parentsY = list(self.dag.predecessors(Y))
+                for parent in parentsY:
+                    parentparents = list(self.dag.predecessors(parent))
+                    if set(parentparents).intersection(set(self.skeleton.neighbors(X))) == None:
+                        self.dag.add_edge(X, Y)
+                        logging.debug(f"orienting {X} -> {Y} logging rule 4")
+                        self.continueorienttation = True
+                        break
+             
