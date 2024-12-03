@@ -1,6 +1,7 @@
 #Madeline Spawn
 #PC Algorithm
 #Causation, Prediction, and Search by Spirtes, Glymour, Scheines (pg. 116)
+#Meeks Rules: https://proceedings.mlr.press/v89/katz19a/katz19a-supp.pdf
 
 import networkx as nx
 import logging
@@ -100,8 +101,7 @@ class PC:
         #find unshielded triples
         unshieldedtriples = self.unshieldedtriples()
 
-        for triple in unshieldedtriples:
-            X, Y, Z = triple
+        for (X, Y, Z) in unshieldedtriples:
             if self.sepset[(X,Z)] != None and Y not in self.sepset[(X,Z)]:
                 #collider
                 self.dag.add_edge(X, Y)
@@ -121,30 +121,29 @@ class PC:
             edges for edges in self.skeletongraph.edges
             if (edges[0], edges[1]) not in self.dag.edges and (edges[1], edges[0]) not in self.dag.edges
         ]
-        print(undirectededges)
 
-        #meeks rules
+        edges = undirectededges.copy()
+        for edge in edges:
+            undirectededges.append((edge[1], edge[0]))
 
-        changes = True
-        while changes:
-            print("again")
-            changes = False 
-            
-            for edge in undirectededges:
-                X, Y = edge
-
-                #Rule 1
+        #Rule 1
+        self.rule1(undirectededges)
                 
+        #Rule 2
+        self.rule2(undirectededges)
 
-                #Rule 2
+        #Rule 3
+        self.rule3(undirectededges)
 
-                #Rule 3
-
-                if rule4:
-                    #Rule4
-                    continue
+        if rule4:
+            self.rule4(undirectededges)
 
 
+        for (X,Y) in self.skeletongraph.edges:
+            if (X,Y) not in self.dag.edges and (Y,X) not in self.dag.edges:
+                print(X,Y)
+                self.dag.add_edge(X, Y)
+                self.dag.add_edge(Y, X)
 
         logging.info('Orientation complete.')
 
@@ -251,11 +250,72 @@ class PC:
 
         plt.title(str(graph))    
         plt.show()
-  
     
-        ''' 
+    def rule1(self, undirectededges):
+        '''
         Input: None
         Output: None
-        Purpose: 
+        Purpose: Orient X - Y into  X -> Y when directed W -> X 
         '''
+        for (X,Y) in undirectededges:
+            print(X,Y)
+            if X not in self.dag.nodes:
+                logging.debug(f"X not in DAG: {X}")
+                continue
+            else:
+                parentsX = list(self.dag.predecessors(X))
+                for W in parentsX:
+                    if self.dag.has_edge(W, X):
+                        self.dag.add_edge(X, Y)
+                        logging.debug(f"orienting {X} -> {Y} because {W} -> {X}")
+                        break
+
         return 0
+    
+    def rule2(self, undirectededges):
+        '''
+        Input: None
+        Output: None
+        Purpose: X - Y is X -> Y when X -> Z and Z -> Y
+        '''
+        
+        for (X,Y) in undirectededges:
+            if X not in self.dag.nodes:
+                logging.debug(f"X not in DAG: {X}")
+                continue
+            else:
+                childrenY = list(self.dag.successors(X))
+                for Z in childrenY:
+                    if self.dag.has_edge(X, Z) and self.dag.has_edge(Z, Y):
+                        self.dag.add_edge(X, Y)
+                        logging.debug(f"orienting {X} -> {Y} because {X} -> {Z} and {Z} -> {Y}")
+                        break
+    
+    def rule3(self, undirectededges):
+        '''
+        Input: None
+        Output: None
+        Purpose: Orient X - Y into  X -> Y where W -> Y and Z -> Y
+        '''
+
+        for (X,Y) in undirectededges:
+            if X not in self.dag.nodes:
+                logging.debug(f"X not in DAG: {X}")
+                continue
+            else:
+                parents = list(self.dag.predecessors(X))
+                parentcombos = list(itertools.combinations(parents, 2))
+                for (W, Z) in parentcombos:
+                    if self.dag.has_edge(W, X) and self.dag.has_edge(Z, X):
+                        self.dag.add_edge(X, Y)
+                        logging.debug(f"orienting {X} -> {Y}")
+                        break
+          
+        return 0
+
+    def rule4(self, undirectededges):
+        '''
+        Input: None
+        Output: None
+        Purpose: Orient X - Y into X -> Y where 
+        '''
