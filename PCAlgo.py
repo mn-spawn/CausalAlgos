@@ -7,6 +7,7 @@ import networkx as nx
 import logging
 import itertools
 import pingouin as pg
+from pgmpy.estimators.CITests import g_sq
 import matplotlib.pyplot as plt
 
 class PC:
@@ -70,7 +71,9 @@ class PC:
                     neighborsexcludeX = [node for node in neighbors if node != X]
 
                     for Z in itertools.combinations(neighborsexcludeX, depth):
-                        Z = set(Z)
+                        Z = list(Z)
+                        logging.debug(f"testing {Z} to sep set for {X},{Y}, p-value:{self.testindependence(X, Y, Z)}")
+
                         if self.testindependence(X, Y, Z) > self.alpha:
                             if self.skeletongraph.has_edge(X, Y):
                                 logging.debug(f"removing {X} - {Y}")
@@ -97,12 +100,16 @@ class PC:
 
         self.dag = nx.DiGraph()
 
+        for node in self.skeletongraph.nodes():
+            self.dag.add_node(node)
+
         #find unshielded triples
         unshieldedtriples = self.unshieldedtriples()
 
         for (X, Y, Z) in unshieldedtriples:
-            if self.sepset[(X,Z)] != None and Y not in self.sepset[(X,Z)]:
+            if (self.sepset[(X,Z)] != None and Y not in self.sepset[(X,Z)]) or self.sepset[(X,Z)] == None:
                 #collider
+                logging.debug(f"Add {X, Y} and {Z, Y}")#
                 self.dag.add_edge(X, Y)
                 self.dag.add_edge(Z, Y)
         
@@ -116,14 +123,14 @@ class PC:
         Purpose: 
         '''
         
-        undirectededges = [
+        undirectededges = {
             edges for edges in self.skeletongraph.edges
             if (edges[0], edges[1]) not in self.dag.edges and (edges[1], edges[0]) not in self.dag.edges
-        ]
+        }
 
         edges = undirectededges.copy()
         for edge in edges:
-            undirectededges.append((edge[1], edge[0]))
+            undirectededges.add((edge[1], edge[0]))
 
         while self.continueorienttation:
 
@@ -173,12 +180,14 @@ class PC:
         Purpose: handle different tests + return p-value
         '''
         
-        if Z:
-            result = pg.partial_corr(self.data, X, Y, covar=Z)
-            #result = self.condindtest(self.data, X, Y, Z)
-            return result['p-val'].values[0]
-        else:
-            return self.indtest(self.data[X], self.data[Y])[1]
+        return  g_sq(X, Y, Z, self.data, boolean=False)[1]
+
+        #if Z:
+        #    result = pg.partial_corr(self.data, X, Y, covar=Z, method="spearman")
+        #    #result = self.condindtest(self.data, X, Y, Z)
+        #    return result['p-val'].values[0]
+        #else:
+        #    return self.indtest(self.data[X], self.data[Y])[1]
 
     def adjgreaterthandepth(self, graph, d):
         '''
@@ -258,20 +267,25 @@ class PC:
         '''
 
         self.continueorienttation = False
+        oriented_edges_set = set()
 
         for (X,Y) in undirectededges:
-            if X not in self.dag.nodes:
-                logging.debug(f"X not in DAG: {X}")
-                continue
-            else:
-                parentsX = list(self.dag.predecessors(X))
-                for W in parentsX:
-                    if self.dag.has_edge(W, X):
-                        self.dag.add_edge(X, Y)
-                        logging.debug(f"orienting {X} -> {Y} because {W} -> {X}, logging rule 1")
-                        self.continueorienttation = True
-                        break
+            if (Y,X) not in self.dag.edges:
+                if X not in self.dag.nodes:
+                    logging.debug(f"X not in DAG: {X}")
+                    continue
+                else:
+                    parentsX = list(self.dag.predecessors(X))
+                    for W in parentsX:
+                        if self.dag.has_edge(W, X):
+                            self.dag.add_edge(X, Y)
+                            oriented_edges_set.add((X,Y))
+                            oriented_edges_set.add((Y,X))
+                            logging.debug(f"orienting {X} -> {Y} because {W} -> {X}, logging rule 1")
+                            self.continueorienttation = True
+                            break
 
+        undirectededges-=oriented_edges_set
         return 0
     
     def rule2(self, undirectededges):
@@ -281,19 +295,26 @@ class PC:
         Purpose: X - Y is X -> Y when X -> Z and Z -> Y
         '''
         self.continueorienttation = False
+        oriented_edges_set = set()
         
         for (X,Y) in undirectededges:
-            if X not in self.dag.nodes:
-                logging.debug(f"X not in DAG: {X}")
-                continue
-            else:
-                childrenY = list(self.dag.successors(X))
-                for Z in childrenY:
-                    if self.dag.has_edge(X, Z) and self.dag.has_edge(Z, Y):
-                        self.dag.add_edge(X, Y)
-                        logging.debug(f"orienting {X} -> {Y} because {X} -> {Z} and {Z} -> {Y} logging rule 2")
-                        self.continueorienttation = True
-                        break
+            if (Y,X) not in self.dag.edges:
+                if X not in self.dag.nodes:
+                    logging.debug(f"X not in DAG: {X}")
+                    continue
+                else:
+                    childrenY = list(self.dag.successors(X))
+                    for Z in childrenY:
+                        if self.dag.has_edge(X, Z) and self.dag.has_edge(Z, Y):
+                            self.dag.add_edge(X, Y)
+                            oriented_edges_set.add((X,Y))
+                            oriented_edges_set.add((Y,X))
+                            logging.debug(f"orienting {X} -> {Y} because {X} -> {Z} and {Z} -> {Y} logging rule 2")
+                            self.continueorienttation = True
+                            break
+
+        undirectededges-=oriented_edges_set
+        return 0
     
     def rule3(self, undirectededges):
         '''
@@ -302,21 +323,26 @@ class PC:
         Purpose: Orient X - Y into  X -> Y where W -> Y and Z -> Y
         '''
         self.continueorienttation = False
+        oriented_edges_set = set()
 
         for (X,Y) in undirectededges:
-            if X not in self.dag.nodes:
-                logging.debug(f"X not in DAG: {X}")
-                continue
-            else:
-                parents = list(self.dag.predecessors(X))
-                parentcombos = list(itertools.combinations(parents, 2))
-                for (W, Z) in parentcombos:
-                    if self.dag.has_edge(W, X) and self.dag.has_edge(Z, X):
-                        self.dag.add_edge(X, Y)
-                        logging.debug(f"orienting {X} -> {Y} logging rule 3")
-                        self.continueorienttation = True
-                        break
-          
+            if (Y,X) not in self.dag.edges:
+                if X not in self.dag.nodes:
+                    logging.debug(f"X not in DAG: {X}")
+                    continue
+                else:
+                    parents = list(self.dag.predecessors(X))
+                    parentcombos = list(itertools.combinations(parents, 2))
+                    for (W, Z) in parentcombos:
+                        if self.dag.has_edge(W, X) and self.dag.has_edge(Z, X):
+                            self.dag.add_edge(X, Y)
+                            oriented_edges_set.add((X,Y))
+                            oriented_edges_set.add((Y,X))
+                            logging.debug(f"orienting {X} -> {Y} logging rule 3")
+                            self.continueorienttation = True
+                            break
+        
+        undirectededges-=oriented_edges_set
         return 0
 
     def rule4(self, undirectededges):
@@ -325,18 +351,26 @@ class PC:
         Output: None
         Purpose: Orient X - Y into X -> Y where A -> B -> Y 
         '''
+        self.continueorienttation = False
+        oriented_edges_set = set()
 
         for (X,Y) in undirectededges:
-            if Y not in self.dag.nodes:
-                logging.debug(f"Y not in DAG: {Y}")
-                continue
-            else:
-                parentsY = list(self.dag.predecessors(Y))
-                for parent in parentsY:
-                    parentparents = list(self.dag.predecessors(parent))
-                    if set(parentparents).intersection(set(self.skeleton.neighbors(X))) == None:
-                        self.dag.add_edge(X, Y)
-                        logging.debug(f"orienting {X} -> {Y} logging rule 4")
-                        self.continueorienttation = True
-                        break
+            if (Y,X) not in self.dag.edges:
+                if Y not in self.dag.nodes:
+                    logging.debug(f"Y not in DAG: {Y}")
+                    continue
+                else:
+                    parentsY = list(self.dag.predecessors(Y))
+                    for parent in parentsY:
+                        parentparents = list(self.dag.predecessors(parent))
+                        if set(parentparents).intersection(set(self.skeletongraph.neighbors(X))) == None:
+                            self.dag.add_edge(X, Y)
+                            oriented_edges_set.add((X,Y))
+                            oriented_edges_set.add((Y,X))
+                            logging.debug(f"orienting {X} -> {Y} logging rule 4")
+                            self.continueorienttation = True
+                            break
+
+        undirectededges-=oriented_edges_set
+        return 0
              
